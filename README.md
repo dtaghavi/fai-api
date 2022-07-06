@@ -1,4 +1,4 @@
-# Metakademy - NodeJS Typescript API 
+# Wire DAPP - NodeJS Typescript API 
 
 ## Commands
 

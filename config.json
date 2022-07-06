@@ -1,19 +1,44 @@
 {
+    "dev": true,
     "hosts": {
         "production": {
             "httpPort": 80,
-            "httpsPort": 443
+            "httpsPort": 443,
+            "AIRWIRE_ACTIVE_PUBLIC" : "EOS7wCXmfVuQdZkx4JHbcfc16RLKrHi2ELqUtkje73bVg98N8Yavi",
+            "AIRWIRE_ACTIVE_PRIVATE" : "5Kdt2gigGFoGiuRnth5qk5YQFiSQhZJNfgitZSe2KKzp1qZ27tn",
+            "AES_KEY" : "airwire-encrypt",
+            "API_ENDPOINT": "https://swamprod.airwire.io",
+            "HYPERION": "https://hyperwire.airwire.io",
+            "database": {
+                "host": "127.0.0.1",
+                "database": "local_database",
+                "user": "local_database_user",
+                "password": "local_database_user_password"
+            }
         },
         "development": {
             "httpPort": 3000,
-            "httpsPort": 3030
+            "httpsPort": 3030,
+            "AIRWIRE_ACTIVE_PUBLIC" : "EOS7wCXmfVuQdZkx4JHbcfc16RLKrHi2ELqUtkje73bVg98N8Yavi",
+            "AIRWIRE_ACTIVE_PRIVATE" : "5Kdt2gigGFoGiuRnth5qk5YQFiSQhZJNfgitZSe2KKzp1qZ27tn",
+            "AES_KEY" : "airwire-encrypt",
+            "API_ENDPOINT": "https://swamprod.airwire.io",
+            "HYPERION": "https://hyperwire.airwire.io",
+            "database": {
+                "host": "remote_api_host",
+                "database": "remote_database_name",
+                "user": "remote_database_user",
+                "password": "remote_database_user_password"
+            }
         }
     },
-    "database": {
-        "host": "172.105.148.20",
-        "database": "alacrity_price_history",
-        "user": "alacrity_devin",
-        "password": "Devin2021!@"
+    "bot_config": {
+        "bot_token": "OTg0NTI0MDA0NDk0ODAyOTU0.GCKx6F.EgESJTPpwFmBCDFhOqS6LUvv8C0D0f1OdODV-A",
+        "application_id": "984524004494802954",
+        "client_id": "984524004494802954",
+        "client_secret": "TT-O8toUswMoUG_ikwgR36VqhWmscbfu"
     },
-    "socketio": false
+    "guild_id": "943890575424356393",
+    "socketio": false,
+    "crypto_js_key": ""
 }

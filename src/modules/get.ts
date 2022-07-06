@@ -1,5 +1,5 @@
 import { Express, Request, Response } from 'express';
-import { DataBase } from './database';
+import { DataBase } from './classes/database';
 
 export class GET {
     db: DataBase;

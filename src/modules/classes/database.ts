@@ -5,7 +5,10 @@ export class DataBase {
     connected = false;
     con: any;
 
-    constructor() { this.con = mysql.createConnection(global.config.database); }
+    constructor() { 
+        // Uncomment to initialize SQL database connection:
+        // this.con = mysql.createConnection(global.config.database); 
+    }
 
     query(sql: string){
         return new Promise((res, rej)=>{

@@ -10,9 +10,20 @@ import http from 'http';
 import { Server } from 'node:http';
 import { GET } from './get';
 import { POST } from './post';
-import { Socket } from './socket';
+import { Socket } from './classes/socket';
 
 var cron = require('node-cron');
+
+declare global {
+    namespace NodeJS {
+        interface Global {
+            foundEndpoint?: {
+                endpoint?: string;
+                promise?: Promise<string>;
+            }
+        }
+    }
+}
 
 export class Main {
     httpServer: Server;
@@ -40,11 +51,8 @@ export class Main {
         
         this.get = new GET(this.app);
         this.post = new POST(this.app);
-        
         this.httpServer = http.createServer(this.app);
-        
         this.socket = new Socket(this.httpServer);
-        
         this.serverListen();
     }
 
