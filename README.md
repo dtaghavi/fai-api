@@ -1,4 +1,4 @@
-# NodeJS API Typescript Boilerplate
+# Metakademy - NodeJS Typescript API 
 
 ## Commands
 
