@@ -98,6 +98,36 @@ export class DataBase {
             }, (err : any) => { rej(err) })
         })
     }
+
+    async insertMultiple(table: string, data: Object[]) {
+        let insertValues : string[] = []
+        for(let obj of data){
+            let values = '';
+            await Object.values(obj).forEach((value : any, index : any) => {
+                if (index != Object.values(obj).length - 1) {
+                    if (value == null) values += "" + null + ",";
+                    else               values += "'" + value + "',";
+                }
+                else if (index == Object.values(obj).length - 1) {
+                    if (value == null) values += "" + null;
+                    else               values += "'" + value + "'";
+                }
+            });
+            insertValues.push(values)
+        }
+        let values = ''
+        for (let val of insertValues) values += `(${"" + val + ""}),`
+        values = values.slice(0, -1) // remove trailing comma
+
+        return new Promise((res, rej) => {
+            this.query(`
+                    INSERT INTO ${table} (${Object.keys(data[0]).map(k => table + '.' + k).join(',')}) 
+                    VALUES ${values}`)
+                .then((result: any) => {
+                res(result);
+            }, (err : any) => { rej(err) })
+        })
+    }
     
     loadData(table: string, data: any) {
         return new Promise((res, rej) => {
