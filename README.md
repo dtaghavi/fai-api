@@ -1,4 +1,4 @@
-# Wire DAPP - NodeJS Typescript API 
+# NodeJS Typescript API Boiler Plate w/ Discord bot
 
 ## Commands
 

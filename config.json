@@ -4,11 +4,6 @@
         "production": {
             "httpPort": 80,
             "httpsPort": 443,
-            "AIRWIRE_ACTIVE_PUBLIC" : "EOS7wCXmfVuQdZkx4JHbcfc16RLKrHi2ELqUtkje73bVg98N8Yavi",
-            "AIRWIRE_ACTIVE_PRIVATE" : "5Kdt2gigGFoGiuRnth5qk5YQFiSQhZJNfgitZSe2KKzp1qZ27tn",
-            "AES_KEY" : "airwire-encrypt",
-            "API_ENDPOINT": "https://swamprod.airwire.io",
-            "HYPERION": "https://hyperwire.airwire.io",
             "database": {
                 "host": "127.0.0.1",
                 "database": "local_database",
@@ -19,11 +14,6 @@
         "development": {
             "httpPort": 3000,
             "httpsPort": 3030,
-            "AIRWIRE_ACTIVE_PUBLIC" : "EOS7wCXmfVuQdZkx4JHbcfc16RLKrHi2ELqUtkje73bVg98N8Yavi",
-            "AIRWIRE_ACTIVE_PRIVATE" : "5Kdt2gigGFoGiuRnth5qk5YQFiSQhZJNfgitZSe2KKzp1qZ27tn",
-            "AES_KEY" : "airwire-encrypt",
-            "API_ENDPOINT": "https://swamprod.airwire.io",
-            "HYPERION": "https://hyperwire.airwire.io",
             "database": {
                 "host": "remote_api_host",
                 "database": "remote_database_name",

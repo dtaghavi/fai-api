@@ -6,29 +6,22 @@ import path from 'path';
 import axios from 'axios';
 import qs from 'qs';
 import { DataBase } from './database';
-import { Contract, PushTransactionOptions, TransactionAuth, TransactionOptions } from './contract';
+import { DiscordMember, DiscordGuildRole } from '../../types/discord';
 
 const claimRoles = [ 'ds.admin', 'ds.genesis' ]
-
-const authorization : TransactionAuth[] = [{
-    actor: 'dragonspawn',
-    permission: 'owner',
-}]
 
 export class Discord {
     db : DataBase
     client: Client;
-    contract : Contract
     // rest: REST;
     ready: boolean = false;
 
     private events: { [key: string]: Array<Subject<any>> } = {}
 
     constructor() {
-        let { bot_token } = global.config.bot_config
+        let { bot_token } = global.config.bot_config;
 
-        this.contract = new Contract()
-        this.db = new DataBase()
+        this.db = new DataBase();
         // this.rest = new REST({ version: '9' }).setToken(bot_token);
         this.client = new Client({ intents: [ Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MEMBERS ] });
 
@@ -44,46 +37,6 @@ export class Discord {
 
         this.client.login(bot_token);
     }
-
-    registerDiscord(username: string, code : any, address : any){
-        console.log("Registering discord user:", username);
-        
-        return new Promise(async (resolve, reject)=>{
-            let authorization_response = await axios.post('https://discord.com/api/oauth2/token', qs.stringify({
-                client_id: global.config.bot_config.client_id,
-                client_secret: global.config.bot_config.client_secret,
-                code,
-                grant_type: 'authorization_code',
-                redirect_uri: 'https://app.dragonspawn.com'
-            }), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }})
-            .catch((err) => {  reject({ error: err.response.data.error_description })  })
-
-            if (authorization_response) {
-                let authorization = authorization_response.data;
-                let user_response = await axios.get('https://discord.com/api/oauth2/@me', {
-                    headers: { 'authorization': `${ authorization.token_type } ${ authorization.access_token }` }
-                }).catch((err) => { reject({ error: err.response.data.error_description }) })
-
-                if (user_response) {
-                    let discord_id = user_response.data.user.id
-                    let user : DiscordMember | void = await this.fetchAccounts(discord_id).catch((error)=> reject({error}))
-                    
-                    let insertUser : DiscordUserSQL = { username, discord_id, address }
-                    let added = await this.db.insert('discord_users', insertUser).catch((error)=>{ reject({ error }) })
-
-                    if (user && user.roles && user.roles.length){
-                        let roles : DiscordGuildRole[] = user.roles!.filter((role)=>{ return claimRoles.includes('ds.' + role.name.toLowerCase()) })
-                        let groupsToAdd : string[] = roles.map((role : DiscordGuildRole)=> 'ds.' + role.name.toLowerCase())
-                        let addedToGroup = await this.contract.addToGroup(username, groupsToAdd).catch((err)=>{ console.log(err); })
-                        if (addedToGroup) console.log(username, 'added to group(s):', groupsToAdd.join(', '))
-                    }
-                    if (added) resolve({ data: user })
-                }
-                else reject({ error: 'User response error' })
-            }
-        })
-    }
-
 
     fetchAccounts(ids: string) : Promise<DiscordMember>
     fetchAccounts(ids: string[]) : Promise<Array<DiscordMember>>
@@ -159,6 +112,189 @@ export class Discord {
         })
     }
 
+    getUserRoles(user_id: string): Promise<Array<DiscordGuildRole>> {
+        return new Promise((resolve, reject) => {
+            let fetchDiscordRoles: () => Promise<Array<DiscordGuildRole>> = () => {
+                return new Promise((resolve, reject) => {
+                    this.client.guilds.fetch().then(async (guilds) => {
+                        let guildRef = guilds.get(global.config.guild_id);
+                        if(guildRef) {
+                            let guild = await guildRef.fetch();
+                            let roles = await guild.roles.fetch();
+                            let members = await guild.members.fetch();
+
+                            let member = members.get(user_id);
+                            if(member) {
+                                let roles: DiscordGuildRole[] = member.roles.cache.filter(r => r.name != '@everyone').map((role, id) => {
+                                    return {
+                                        icon: role.icon,
+                                        unicodeEmoji: role.unicodeEmoji,
+                                        id,
+                                        name: role.name,
+                                        color: role.color.toString(16)
+                                    } as DiscordGuildRole
+                                });
+                                resolve(roles);
+                            } else {
+                                reject('Member not in Guild');
+                            }
+                        } else {
+                            reject('Guild not found');
+                        }
+                    })
+                })
+            }
+    
+            if(this.ready) {
+                fetchDiscordRoles().then((roles) => {
+                    resolve(roles)
+                }).catch((err) => {
+                    reject(err);
+                })
+            }
+            else this.on('ready').subscribe(() => {
+                fetchDiscordRoles().then((roles: any) => {
+                    resolve(roles)
+                }).catch((err) => {
+                    reject(err);
+                })
+            })
+            
+        })
+    }
+
+    // collab role 933449365681487884
+    // Parameters: userIds -> array of user names / ids (ideally ids), roleToGrant -> id of the role to grant.
+    async massGrantRole(userIds: string[], roleToGrant: string): Promise<Array<string>> {
+        let failedIds: string[] = [];
+        if(userIds && roleToGrant) {
+            return new Promise((resolve, reject) => {
+                let fetchDiscordRoles: () => Promise<any> = () => {
+                    return new Promise((resolve, reject) => {
+                        this.client.guilds.fetch().then(async (guilds) => {
+                            let guildRef = guilds.get(global.config.guild_id);
+                            if(guildRef) {
+                                let guild = await guildRef.fetch();
+                                let roles = await guild.roles.fetch();
+                                let members = await guild.members.fetch();
+                                
+                                for(let user of userIds) {
+
+                                    let found_member: GuildMember | void;
+
+                                    if(user.split('#').length > 1) {
+                                        console.log('Name + Disc');
+                                        let [username, disc] = user.split('#');
+                                        found_member = guild.members.cache.find(m => m.user.username === username && m.user.discriminator == disc);
+                                    } else if((/^[0-9]{1,45}$/gm).exec(user)) {
+                                        console.log('ID');
+                                        found_member = members.get(user);
+                                    } else {
+                                        console.log('GL');
+                                        found_member = guild.members.cache.find(m => m.displayName == user);
+                                    }
+
+                                    if(found_member) {
+                                        await found_member.roles.add(roleToGrant);
+                                        //console.log("🚀 ~ found", found_member)
+                                    } else {
+                                        failedIds.push(user);
+                                        //console.log('NOT Found', user);
+                                    }
+                                }
+                                resolve(true)
+                            } else {
+                                reject('Guild not found');
+                            }
+                        })
+                    })
+                }
+        
+                if(this.ready) {
+                    fetchDiscordRoles().then((res) => {
+                        resolve(failedIds)
+                    }).catch((err) => {
+                        console.log(err);
+                    });
+                }
+                else this.on('ready').subscribe(() => {
+                    fetchDiscordRoles().then((res) => {
+                        resolve(failedIds)
+                    }).catch((err) => {
+                        console.log(err);
+                    });
+                })
+            })
+        }
+        return failedIds;
+    }
+
+    on<T>(event: string): Subject<T> {
+        let subject = new Subject<T>();
+        if(this.events[event]) {
+            this.events[event].push(subject)
+        } else {
+            this.events[event] = [subject];
+        }
+        return subject;
+    }
+
+    emit<T>(event: string, data?: T) {
+        if(this.events[event]) this.events[event].forEach(s => s.next(data));
+    }
+
+
+    // ** OLD FUNCTIONS FOR REFERENCE, NEED TO BE UPDATED FOR CURRENT USE ** 
+
+    // addAddressUser(user_id: string, address: string) {
+    //     return new Promise(async (resolve, reject) => {
+    //         let db: {[key:string]: string[]} | undefined = await fs.readJSON(path.join(global.paths.root, 'new_db.json')).catch((err) => {
+    //             console.log('Error laoding DB');
+    //             reject('Error loading DB');
+    //         });
+
+    //         if(db) {
+    //             let addr = address.toLowerCase();
+
+    //             if(db[addr]) {
+    //                 if(!db[addr].includes(user_id)) db[addr].push(user_id);
+    //             } else {
+    //                 db[addr] = [user_id];
+    //             }
+
+    //             fs.writeJSON(path.join(global.paths.root, 'new_db.json'), db).then(() => {
+    //                 resolve(true);
+    //             }).catch((err) => {
+    //                 reject('Error Saving DB');
+    //             })
+    //         }
+    //     })
+    // }
+
+    // removeAddressUser(user_id: string, address: string) {
+    //     return new Promise(async (resolve, reject) => {
+    //         let db: {[key:string]: string[]} | undefined = await fs.readJSON(path.join(global.paths.root, 'new_db.json')).catch((err) => {
+    //             console.log('Error laoding DB');
+    //             reject('Error loading DB');
+    //         });
+
+    //         if(db) {
+    //             let addr = address.toLowerCase();
+
+    //             if(db[addr] && db[addr].includes(user_id)) {
+    //                 db[addr].splice(db[addr].indexOf(user_id), 1);
+    //             }
+
+    //             fs.writeJSON(path.join(global.paths.root, 'new_db.json'), db).then(() => {
+    //                 resolve(true);
+    //             }).catch((err) => {
+    //                 reject('Error Saving DB');
+    //             })
+    //         }
+    //     })
+    // }
+
+    
     // getAddressMemberIDs(address: string): Promise<Array<string>> {
     //     return new Promise(async (resolve, reject) => {
     //         let db: {[key:string]: string[]} | undefined = await fs.readJSON(path.join(global.paths.root, 'new_db.json')).catch((err) => {
@@ -250,218 +386,45 @@ export class Discord {
     //     })
     // }
 
-    getUserRoles(user_id: string): Promise<Array<DiscordGuildRole>> {
-        return new Promise((resolve, reject) => {
-            let fetchDiscordRoles: () => Promise<Array<DiscordGuildRole>> = () => {
-                return new Promise((resolve, reject) => {
-                    this.client.guilds.fetch().then(async (guilds) => {
-                        let guildRef = guilds.get(global.config.guild_id);
-                        if(guildRef) {
-                            let guild = await guildRef.fetch();
-                            let roles = await guild.roles.fetch();
-                            let members = await guild.members.fetch();
-
-                            let member = members.get(user_id);
-                            if(member) {
-                                let roles: DiscordGuildRole[] = member.roles.cache.filter(r => r.name != '@everyone').map((role, id) => {
-                                    return {
-                                        icon: role.icon,
-                                        unicodeEmoji: role.unicodeEmoji,
-                                        id,
-                                        name: role.name,
-                                        color: role.color.toString(16)
-                                    } as DiscordGuildRole
-                                });
-                                resolve(roles);
-                            } else {
-                                reject('Member not in Guild');
-                            }
-                        } else {
-                            reject('Guild not found');
-                        }
-                    })
-                })
-            }
     
-            if(this.ready) {
-                fetchDiscordRoles().then((roles) => {
-                    resolve(roles)
-                }).catch((err) => {
-                    reject(err);
-                })
-            }
-            else this.on('ready').subscribe(() => {
-                fetchDiscordRoles().then((roles: any) => {
-                    resolve(roles)
-                }).catch((err) => {
-                    reject(err);
-                })
-            })
-            
-        })
-    }
-
-    // addAddressUser(user_id: string, address: string) {
-    //     return new Promise(async (resolve, reject) => {
-    //         let db: {[key:string]: string[]} | undefined = await fs.readJSON(path.join(global.paths.root, 'new_db.json')).catch((err) => {
-    //             console.log('Error laoding DB');
-    //             reject('Error loading DB');
-    //         });
-
-    //         if(db) {
-    //             let addr = address.toLowerCase();
-
-    //             if(db[addr]) {
-    //                 if(!db[addr].includes(user_id)) db[addr].push(user_id);
-    //             } else {
-    //                 db[addr] = [user_id];
-    //             }
-
-    //             fs.writeJSON(path.join(global.paths.root, 'new_db.json'), db).then(() => {
-    //                 resolve(true);
-    //             }).catch((err) => {
-    //                 reject('Error Saving DB');
-    //             })
-    //         }
-    //     })
-    // }
-
-    // removeAddressUser(user_id: string, address: string) {
-    //     return new Promise(async (resolve, reject) => {
-    //         let db: {[key:string]: string[]} | undefined = await fs.readJSON(path.join(global.paths.root, 'new_db.json')).catch((err) => {
-    //             console.log('Error laoding DB');
-    //             reject('Error loading DB');
-    //         });
-
-    //         if(db) {
-    //             let addr = address.toLowerCase();
-
-    //             if(db[addr] && db[addr].includes(user_id)) {
-    //                 db[addr].splice(db[addr].indexOf(user_id), 1);
-    //             }
-
-    //             fs.writeJSON(path.join(global.paths.root, 'new_db.json'), db).then(() => {
-    //                 resolve(true);
-    //             }).catch((err) => {
-    //                 reject('Error Saving DB');
-    //             })
-    //         }
-    //     })
-    // }
-
-    // collab role 933449365681487884
-    // Parameters: userIds -> array of user names / ids (ideally ids), roleToGrant -> id of the role to grant.
-    async massGrantRole(userIds: string[], roleToGrant: string): Promise<Array<string>> {
-        let failedIds: string[] = [];
-        if(userIds && roleToGrant) {
-            return new Promise((resolve, reject) => {
-                let fetchDiscordRoles: () => Promise<any> = () => {
-                    return new Promise((resolve, reject) => {
-                        this.client.guilds.fetch().then(async (guilds) => {
-                            let guildRef = guilds.get(global.config.guild_id);
-                            if(guildRef) {
-                                let guild = await guildRef.fetch();
-                                let roles = await guild.roles.fetch();
-                                let members = await guild.members.fetch();
-                                
-                                for(let user of userIds) {
-
-                                    let found_member: GuildMember | void;
-
-                                    if(user.split('#').length > 1) {
-                                        console.log('Name + Disc');
-                                        let [username, disc] = user.split('#');
-                                        found_member = guild.members.cache.find(m => m.user.username === username && m.user.discriminator == disc);
-                                    } else if((/^[0-9]{1,45}$/gm).exec(user)) {
-                                        console.log('ID');
-                                        found_member = members.get(user);
-                                    } else {
-                                        console.log('GL');
-                                        found_member = guild.members.cache.find(m => m.displayName == user);
-                                    }
-
-                                    if(found_member) {
-                                        await found_member.roles.add(roleToGrant);
-                                        //console.log("🚀 ~ found", found_member)
-                                    } else {
-                                        failedIds.push(user);
-                                        //console.log('NOT Found', user);
-                                    }
-                                }
-                                resolve(true)
-                            } else {
-                                reject('Guild not found');
-                            }
-                        })
-                    })
-                }
+    // registerDiscord(username: string, code : any, address : any){
+    //     console.log("Registering discord user:", username);
         
-                if(this.ready) {
-                    fetchDiscordRoles().then((res) => {
-                        resolve(failedIds)
-                    }).catch((err) => {
-                        console.log(err);
-                    });
-                }
-                else this.on('ready').subscribe(() => {
-                    fetchDiscordRoles().then((res) => {
-                        resolve(failedIds)
-                    }).catch((err) => {
-                        console.log(err);
-                    });
-                })
-            })
-        }
-        return failedIds;
-    }
+    //     return new Promise(async (resolve, reject)=>{
+    //         let authorization_response = await axios.post('https://discord.com/api/oauth2/token', qs.stringify({
+    //             client_id: global.config.bot_config.client_id,
+    //             client_secret: global.config.bot_config.client_secret,
+    //             code,
+    //             grant_type: 'authorization_code',
+    //             redirect_uri: 'https://app.dragonspawn.com'
+    //         }), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }})
+    //         .catch((err) => {  reject({ error: err.response.data.error_description })  })
 
-    on<T>(event: string): Subject<T> {
-        let subject = new Subject<T>();
-        if(this.events[event]) {
-            this.events[event].push(subject)
-        } else {
-            this.events[event] = [subject];
-        }
-        return subject;
-    }
+    //         if (authorization_response) {
+    //             let authorization = authorization_response.data;
+    //             let user_response = await axios.get('https://discord.com/api/oauth2/@me', {
+    //                 headers: { 'authorization': `${ authorization.token_type } ${ authorization.access_token }` }
+    //             }).catch((err) => { reject({ error: err.response.data.error_description }) })
 
-    emit<T>(event: string, data?: T) {
-        if(this.events[event]) this.events[event].forEach(s => s.next(data));
-    }
+    //             if (user_response) {
+    //                 let discord_id = user_response.data.user.id
+    //                 let user : DiscordMember | void = await this.fetchAccounts(discord_id).catch((error)=> reject({error}))
+                    
+    //                 let insertUser : DiscordUserSQL = { username, discord_id, address }
+    //                 let added = await this.db.insert('discord_users', insertUser).catch((error)=>{ reject({ error }) })
+
+    //                 if (user && user.roles && user.roles.length){
+    //                     let roles : DiscordGuildRole[] = user.roles!.filter((role)=>{ return claimRoles.includes('ds.' + role.name.toLowerCase()) })
+    //                     let groupsToAdd : string[] = roles.map((role : DiscordGuildRole)=> 'ds.' + role.name.toLowerCase())
+    //                     let addedToGroup = await this.contract.addToGroup(username, groupsToAdd).catch((err)=>{ console.log(err); })
+    //                     if (addedToGroup) console.log(username, 'added to group(s):', groupsToAdd.join(', '))
+    //                 }
+    //                 if (added) resolve({ data: user })
+    //             }
+    //             else reject({ error: 'User response error' })
+    //         }
+    //     })
+    // }
 }
 
-export interface DiscordMember {
-    id: string;
-    username: string;
-    avatar?: string;
-    banner?: string;
-    in_guild: boolean;
-    roles?: DiscordGuildRole[];
-    expires: number;
-    address?: string
-}
-export interface DiscordGuildRole {
-    icon: string | null,
-    unicodeEmoji: string | null,
-    id: string,
-    name: string,
-    color: string,
-}
-export interface PostResponse<T> {
-    error: boolean;
-    data?: T;
-    message?: string;
-}
-export interface DiscordUserSQL {
-    discord_id: number
-    username: string
-    address: string
-}
-export interface DiscordUser {
-    id: number,
-    username: string,
-    avatar: string,
-    avatar_decoration: any,
-    discriminator: number,
-    public_flags: number
-}
+
