@@ -23,12 +23,12 @@
         }
     },
     "bot_config": {
-        "bot_token": "OTg0NTI0MDA0NDk0ODAyOTU0.GCKx6F.EgESJTPpwFmBCDFhOqS6LUvv8C0D0f1OdODV-A",
-        "application_id": "984524004494802954",
-        "client_id": "984524004494802954",
-        "client_secret": "TT-O8toUswMoUG_ikwgR36VqhWmscbfu"
+        "bot_token": "MTA2NDI1OTgzMDkyMTA0ODE3NA.G6XdaS.43hkpHN8LLPITxZOomAoji5aIBNqYWyAIm2tTA",
+        "application_id": "1064259830921048174",
+        "client_id": "1064259830921048174",
+        "client_secret": "GV2YkTXnKef6oo3me-iSyFEInwSGDGeb"
     },
-    "guild_id": "943890575424356393",
+    "guild_id": "725863983759884298",
     "socketio": false,
     "crypto_js_key": ""
 }

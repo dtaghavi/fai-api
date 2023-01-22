@@ -11,12 +11,16 @@ import { Server } from 'node:http';
 import { GET } from './get';
 import { POST } from './post';
 import { Socket } from './classes/socket';
+import { Discord } from './classes/discord';
+import { Bot } from './classes/bot/bot';
 
 var cron = require('node-cron');
 
 declare global {
     namespace NodeJS {
         interface Global {
+            bot: Bot;
+            discord: Discord;
             foundEndpoint?: {
                 endpoint?: string;
                 promise?: Promise<string>;
@@ -54,6 +58,9 @@ export class Main {
         this.httpServer = http.createServer(this.app);
         this.socket = new Socket(this.httpServer);
         this.serverListen();
+
+        global.discord = new Discord();
+        global.bot = new Bot();
     }
 
     async serverListen() {

@@ -163,7 +163,6 @@ export class Discord {
         })
     }
 
-    // collab role 933449365681487884
     // Parameters: userIds -> array of user names / ids (ideally ids), roleToGrant -> id of the role to grant.
     async massGrantRole(userIds: string[], roleToGrant: string): Promise<Array<string>> {
         let failedIds: string[] = [];
@@ -426,5 +425,3 @@ export class Discord {
     //     })
     // }
 }
-
-
