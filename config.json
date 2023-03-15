@@ -23,12 +23,13 @@
         }
     },
     "bot_config": {
-        "bot_token": "MTA2NDI1OTgzMDkyMTA0ODE3NA.G6XdaS.43hkpHN8LLPITxZOomAoji5aIBNqYWyAIm2tTA",
-        "application_id": "1064259830921048174",
-        "client_id": "1064259830921048174",
-        "client_secret": "GV2YkTXnKef6oo3me-iSyFEInwSGDGeb"
+        "bot_token": "",
+        "application_id": "",
+        "client_id": "",
+        "client_secret": ""
     },
-    "guild_id": "725863983759884298",
+    "dalle_api_key": "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",
+    "guild_id": "",
     "socketio": false,
     "crypto_js_key": ""
 }

@@ -12,6 +12,9 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
+    "types": [
+      "node"
+    ],
     "paths": {
       "*": [
         "./node_modules/*",

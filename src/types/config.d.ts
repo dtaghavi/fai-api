@@ -11,6 +11,7 @@ export interface Config {
     },
     bot_config: DiscordBotConfig;
     guild_id: string,
+    dalle_api_key: string;
     dev: boolean
     socketio: boolean,
     crypto_js_key : string

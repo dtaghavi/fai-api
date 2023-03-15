@@ -13,6 +13,7 @@ import { POST } from './post';
 import { Socket } from './classes/socket';
 import { Discord } from './classes/discord';
 import { Bot } from './classes/bot/bot';
+import { DalleAPI } from './classes/dalle';
 
 var cron = require('node-cron');
 
@@ -59,8 +60,21 @@ export class Main {
         this.socket = new Socket(this.httpServer);
         this.serverListen();
 
-        global.discord = new Discord();
-        global.bot = new Bot();
+        // let dalle = new DalleAPI();
+
+        // let images = dalle.generateImage("giant taco").catch(err => {
+        //     console.log({ err }); 
+        // });
+
+        // console.log({ images });
+
+        // dalle.variate("https://sabe.io/images/saturn.png").then(() => {
+        //     console.log('yes');
+        // }).catch(err => {
+        //     console.log({ err });
+        // })
+        // global.discord = new Discord();
+        // global.bot = new Bot();
     }
 
     async serverListen() {
